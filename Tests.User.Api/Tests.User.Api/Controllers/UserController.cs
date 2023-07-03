@@ -2,20 +2,21 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Tests.User.Api.Data;
+using Tests.User.Api.Data.Services;
 
 namespace Tests.User.Api.Controllers
 {
     public class UserController : Controller
     {
 
-        private readonly DatabaseContext _database;
         private readonly ILogger<UserController> _logger;
+        private readonly IUserService _userService;
 
 
-        public UserController(DatabaseContext database, ILogger<UserController> logger)
+        public UserController(ILogger<UserController> logger, IUserService userService)
         {
-            _database = database;
             _logger = logger;
+            _userService = userService;
 
         }
 
@@ -30,7 +31,7 @@ namespace Tests.User.Api.Controllers
         {
             try
             {
-                var user = await _database.Users.FindAsync(id);
+                var user = await _userService.GetUserAsync(id);
 
                 if (user == null)
                 {
@@ -55,7 +56,7 @@ namespace Tests.User.Api.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("api/users")]
-        public async Task<IActionResult> Create([FromQuery] UpdateRequestVM userRequest)
+        public async Task<IActionResult> Create([FromQuery] UpdateRequestVM newUser)
         {
 
             if (!ModelState.IsValid)
@@ -65,15 +66,12 @@ namespace Tests.User.Api.Controllers
 
             try
             {
-                var user = new Models.User
-                {
-                    Age = userRequest.Age,
-                    FirstName = userRequest.FirstName,
-                    LastName = userRequest.LastName
-                };
+                var user = await _userService.CreateUserAsync(newUser);
 
-                _database.Users.Add(user);
-                await _database.SaveChangesAsync();
+                if (user == null)
+                {
+                    return StatusCode(500, new { Message = $"An error occurred while creating the user." });
+                }
 
                 return Ok(User);
             }
@@ -95,7 +93,7 @@ namespace Tests.User.Api.Controllers
         /// <returns></returns>
         [HttpPut]
         [Route("api/users")]
-        public async Task<IActionResult> Update(int id, [FromQuery] UpdateRequestVM userRequest)
+        public async Task<IActionResult> Update(int id, [FromQuery] UpdateRequestVM updatedUser)
         {
             if (!ModelState.IsValid)
             {
@@ -104,27 +102,14 @@ namespace Tests.User.Api.Controllers
 
             try
             {
-                var user = await _database.Users.FindAsync(id);
+                var user = await _userService.UpdateUserAsync(id, updatedUser);
 
-            if (user == null)
+                if (user == null)
             {
                 return NotFound(new { Message = $"User with ID {id} was not found." });
             }
 
-            user.FirstName = userRequest.FirstName;
-            user.LastName = userRequest.LastName;
-            user.Age = userRequest.Age;
-
-            try
-            {
-                await _database.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                return StatusCode(500, new { Message = $"An error occurred while processing the changes in your request." });
-            }
-
-            return Ok();
+            return Ok(user);
         }
             catch (Exception ex)
             {
@@ -144,17 +129,14 @@ namespace Tests.User.Api.Controllers
         {
             try
             {
-                var user = await _database.Users.FindAsync(id);
+                var result = await _userService.DeleteUserAsync(id);
 
-            if (user == null)
-            {
-                return NotFound(new { Message = $"User with ID {id} was not found." });
-            }
+                if (!result)
+                {
+                    return NotFound(new { Message = $"User with ID {id} was not found." });
+                }
 
-            _database.Users.Remove(user);
-            await _database.SaveChangesAsync();
-
-            return Ok();
+                return Ok();
             }
             catch (Exception ex)
             {
