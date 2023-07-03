@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Tests.User.Api.Controllers
 {
@@ -6,11 +8,14 @@ namespace Tests.User.Api.Controllers
     {
 
         private readonly DatabaseContext _database;
+        private readonly ILogger<UserController> _logger;
 
 
-        public UserController(DatabaseContext database)
+        public UserController(DatabaseContext database, ILogger<UserController> logger)
         {
             _database = database;
+            _logger = logger;
+
         }
 
         /// <summary>
@@ -20,11 +25,24 @@ namespace Tests.User.Api.Controllers
         /// <returns></returns>
         [HttpGet]
         [Route("api/users")]
-        public IActionResult Get(int id)
+        public async Task<IActionResult> Get(int id)
         {
-            //DatabaseContext database = new DatabaseContext();
-            Models.User user = _database.Users.Where(user => user.Id == id).First();
-            return Ok(user);
+            try
+            {
+                var user = await _database.Users.FindAsync(id);
+
+                if (user == null)
+                {
+                    return NotFound(new { Message = $"User with ID {id} was not found." });
+                }
+
+                return Ok(user);
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while getting user with ID {UserId}.", id);
+                return StatusCode(500, new { Message = $"An error occurred while processing your request." });
+            }
         }
 
         /// <summary>
@@ -36,17 +54,28 @@ namespace Tests.User.Api.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("api/users")]
-        public IActionResult Create(string firstName, string lastName, string age)
+        public async Task<IActionResult> Create(string firstName, string lastName, string age)
         {
-            //DatabaseContext Database = new DatabaseContext();
-            _database.Users.Add(new Models.User
+            try
             {
-                Age = age,
-                FirstName = firstName,
-                LastName = lastName
-            });
-            _database.SaveChanges();
-            return Ok();
+                var user = new Models.User
+                {
+                    Age = age,
+                    FirstName = firstName,
+                    LastName = lastName
+                };
+
+                _database.Users.Add(user);
+                await _database.SaveChangesAsync();
+
+                return Ok(User);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while creating a new user");
+                return StatusCode(500, new { Message = $"An error occurred while processing your request." });
+            }
+           
         }
 
         /// <summary>
@@ -59,18 +88,37 @@ namespace Tests.User.Api.Controllers
         /// <returns></returns>
         [HttpPut]
         [Route("api/users")]
-        public IActionResult Update(int id, string firstName, string lastName, string age)
+        public async Task<IActionResult> Update(int id, string firstName, string lastName, string age)
         {
-            //DatabaseContext Database = new DatabaseContext();
-            _database.Users.Update(new Models.User
+            try
             {
-                Age = age,
-                FirstName = firstName,
-                LastName = lastName,
-                Id = id
-            });
-            _database.SaveChanges();
+                var user = await _database.Users.FindAsync(id);
+
+            if (user == null)
+            {
+                return NotFound(new { Message = $"User with ID {id} was not found." });
+            }
+
+            user.FirstName = firstName;
+            user.LastName = lastName;
+            user.Age = age;
+
+            try
+            {
+                await _database.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return StatusCode(500, new { Message = $"An error occurred while processing the changes in your request." });
+            }
+
             return Ok();
+        }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while getting user with ID {UserId}.", id);
+                return StatusCode(500, new { Message = $"An error occurred while processing your request." });
+            }
         }
 
         /// <summary>
@@ -80,15 +128,27 @@ namespace Tests.User.Api.Controllers
         /// <returns></returns>
         [HttpDelete]
         [Route("api/users")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            //DatabaseContext database = new DatabaseContext();
-            _database.Users.Remove(new Models.User
+            try
             {
-                Id = id
-            });
-            _database.SaveChanges();
+                var user = await _database.Users.FindAsync(id);
+
+            if (user == null)
+            {
+                return NotFound(new { Message = $"User with ID {id} was not found." });
+            }
+
+            _database.Users.Remove(user);
+            await _database.SaveChangesAsync();
+
             return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while deleting an existing user");
+                return StatusCode(500, new { Message = $"An error occurred while processing your request." });
+            }
         }
     }
 }
