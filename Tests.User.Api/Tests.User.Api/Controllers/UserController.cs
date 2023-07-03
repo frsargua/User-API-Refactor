@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Tests.User.Api.Data;
 
 namespace Tests.User.Api.Controllers
 {
@@ -54,15 +55,21 @@ namespace Tests.User.Api.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("api/users")]
-        public async Task<IActionResult> Create(string firstName, string lastName, string age)
+        public async Task<IActionResult> Create([FromQuery] UpdateRequestVM userRequest)
         {
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             try
             {
                 var user = new Models.User
                 {
-                    Age = age,
-                    FirstName = firstName,
-                    LastName = lastName
+                    Age = userRequest.Age,
+                    FirstName = userRequest.FirstName,
+                    LastName = userRequest.LastName
                 };
 
                 _database.Users.Add(user);
@@ -88,8 +95,13 @@ namespace Tests.User.Api.Controllers
         /// <returns></returns>
         [HttpPut]
         [Route("api/users")]
-        public async Task<IActionResult> Update(int id, string firstName, string lastName, string age)
+        public async Task<IActionResult> Update(int id, [FromQuery] UpdateRequestVM userRequest)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             try
             {
                 var user = await _database.Users.FindAsync(id);
@@ -99,9 +111,9 @@ namespace Tests.User.Api.Controllers
                 return NotFound(new { Message = $"User with ID {id} was not found." });
             }
 
-            user.FirstName = firstName;
-            user.LastName = lastName;
-            user.Age = age;
+            user.FirstName = userRequest.FirstName;
+            user.LastName = userRequest.LastName;
+            user.Age = userRequest.Age;
 
             try
             {
