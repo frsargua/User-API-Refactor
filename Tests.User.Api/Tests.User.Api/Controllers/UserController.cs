@@ -4,6 +4,15 @@ namespace Tests.User.Api.Controllers
 {
     public class UserController : Controller
     {
+
+        private readonly DatabaseContext _database;
+
+
+        public UserController(DatabaseContext database)
+        {
+            _database = database;
+        }
+
         /// <summary>
         ///     Gets a user
         /// </summary>
@@ -13,8 +22,8 @@ namespace Tests.User.Api.Controllers
         [Route("api/users")]
         public IActionResult Get(int id)
         {
-            DatabaseContext database = new DatabaseContext();
-            Models.User user = database.Users.Where(user => user.Id == id).First();
+            //DatabaseContext database = new DatabaseContext();
+            Models.User user = _database.Users.Where(user => user.Id == id).First();
             return Ok(user);
         }
 
@@ -29,14 +38,14 @@ namespace Tests.User.Api.Controllers
         [Route("api/users")]
         public IActionResult Create(string firstName, string lastName, string age)
         {
-            DatabaseContext Database = new DatabaseContext();
-            Database.Users.Add(new Models.User
+            //DatabaseContext Database = new DatabaseContext();
+            _database.Users.Add(new Models.User
             {
                 Age = age,
                 FirstName = firstName,
                 LastName = lastName
             });
-            Database.SaveChanges();
+            _database.SaveChanges();
             return Ok();
         }
 
@@ -52,15 +61,15 @@ namespace Tests.User.Api.Controllers
         [Route("api/users")]
         public IActionResult Update(int id, string firstName, string lastName, string age)
         {
-            DatabaseContext Database = new DatabaseContext();
-            Database.Users.Update(new Models.User
+            //DatabaseContext Database = new DatabaseContext();
+            _database.Users.Update(new Models.User
             {
                 Age = age,
                 FirstName = firstName,
                 LastName = lastName,
                 Id = id
             });
-            Database.SaveChanges();
+            _database.SaveChanges();
             return Ok();
         }
 
@@ -73,12 +82,12 @@ namespace Tests.User.Api.Controllers
         [Route("api/users")]
         public IActionResult Delete(int id)
         {
-            DatabaseContext database = new DatabaseContext();
-            database.Users.Remove(new Models.User
+            //DatabaseContext database = new DatabaseContext();
+            _database.Users.Remove(new Models.User
             {
                 Id = id
             });
-            database.SaveChanges();
+            _database.SaveChanges();
             return Ok();
         }
     }
